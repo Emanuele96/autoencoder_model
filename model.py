@@ -111,6 +111,20 @@ class Classifier(nn.Module):
             x = self.softmax(x)
         return x
 
+    def freeze_encoder_lv(self):
+        self.encoder.weight.requires_grad = False
+        self.encoder.bias.requires_grad = False
+        
+        self.latent_vector.weight.requires_grad = False
+        self.latent_vector.bias.requires_grad = False
+
+    def unfreeze_encoder_lv(self):
+        self.encoder.weight.requires_grad = True
+        self.encoder.bias.requires_grad = True
+        
+        self.latent_vector.weight.requires_grad = True
+        self.latent_vector.bias.requires_grad = True
+
 
 class Model():
     
@@ -141,13 +155,30 @@ class Model():
             return cross_entropy()
 
 
-    def initiate_optim(self):
+    def initiate_optim(self, params):
         if optim_name == "sgd":
-            return optim.SGD(self.model.parameters(), lr=self.lr)
+            return optim.SGD(params, lr=self.lr)
         elif optim_name == "adam":
-            return optim.Adam(self.model.parameters(), lr=self.lr)
+            return optim.Adam(params, lr=self.lr)
         elif optim_name == "rms":
-            return optim.RMSprop(self.model.parameters(), lr=self.lr)
+            return optim.RMSprop(params, lr=self.lr)
+
+    def freeze_encoder_lv(self):
+        #Freeze model weights and biases
+        self.model.freeze_encoder_lv()
+        #Get all parameters that require gradient calculation
+        params = filter(lambda p: p.requires_grad, self.model.parameters())
+        #Reload the optimizer
+        self.optim = self.initiate_optim(params)
+        
+    def unfreeze_encoder_lv(self):
+        #Unfreeze model weights and biases
+        self.model.unfreeze_encoder_lv()
+        #Get all parameters that require gradient calculation
+        params = filter(lambda p: p.requires_grad, self.model.parameters())
+        #Reload the optimizer
+        self.optim = self.initiate_optim(params)
+        #optimizer.add_param_group({'params': net.fc2.parameters()})
 
     def fit(self, train_loader, n_epochs):
         losses = list()
