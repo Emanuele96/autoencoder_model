@@ -1,0 +1,18 @@
+{
+    "dataset" : "mnist",
+    "D1_D2_split" : [0.7, 0.3],
+    "D2_split" : [0.7, 0.3],
+    "minibatch_size": 32,
+    "lr_autoencoder" : 5e-6,
+    "lr_classifier": 5e-6,
+    "epochs_autoencoder" : 100,
+    "epochs_classifier" : 100, 
+    "latent_vector_size" : 10,
+    "optimizer_autoencoder": "adam",
+    "optimizer_classifier": "adam",
+    "loss_autoencoder": "mse",
+    "loss_classifier": "mse",
+    "freeze_weights" : false, 
+    "display_recostruction_nr" : 0,
+    "tsne_plot_show" : false
+}
