@@ -14,22 +14,15 @@ def calculate_conv2d_output(input_size, stride, padding, dilatation, kernel_size
 class Autoencoder(nn.Module):
 
     def __init__(self, input_shape, latent_vector_size):
-        super(Net, self ).__init__()
+        super(Autoencoder, self ).__init__()
 
         # encoder
         self.encoder = nn.Sequential(
-            '''nn.Conv2d(in_channels=input_shape[0], out_channels=4, kernel_size=5, stride=1, padding=1),
+            nn.Linear(in_features=input_shape[1], out_features=100),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size= 2, stride=2),
-            nn.Conv2d(in_channels=4, out_channels=1, kernel_size=5, stride=1, padding=1),
-            nn.ReLU,
-            nn.MaxPool2d(kernel_size= 2, stride=2)'''
-            
-            nn.Linear(in_features=input_shape[1], out_features=100)),
+            nn.Linear(in_features=100, out_features=50),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=50)),
-            nn.ReLU(),
-            nn.Linear(in_features=50, out_features=20)),
+            nn.Linear(in_features=50, out_features=20),
 
         )
 
@@ -40,15 +33,12 @@ class Autoencoder(nn.Module):
 
         #decoder
         self.decoder = nn.Sequential(
-            '''nn.ConvTranspose2d(in_channels= 1, out_channels = 4, kernel_size = 5, stride= 1, padding= 1),
-            nn.ReLU,
-            nn.ConvTranspose2d(in_channels= 4, out_channels = 1, kernel_size = 5, stride= 1, padding= 1),
-            nn.ReLU()'''
-            nn.Linear(in_features=latent_vector_size, out_features=50)),
+
+            nn.Linear(in_features=latent_vector_size, out_features=50),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=100)),
+            nn.Linear(in_features=50, out_features=100),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=input_shape[1])),
+            nn.Linear(in_features=100, out_features=input_shape[1]),
 
         )
 
@@ -67,16 +57,16 @@ class Autoencoder(nn.Module):
 class Classifier(nn.Module):
 
     def __init__(self, input_shape, latent_vector_size, use_softmax, classifier_output):
-        super(Net, self ).__init__()
+        super(Classifier, self ).__init__()
 
         # encoder
         self.encoder = nn.Sequential(
         
-            nn.Linear(in_features=input_shape[1], out_features=100)),
+            nn.Linear(in_features=input_shape[1], out_features=100),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=50)),
+            nn.Linear(in_features=100, out_features=50),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=20)),
+            nn.Linear(in_features=50, out_features=20),
 
         )
 
@@ -128,7 +118,7 @@ class Classifier(nn.Module):
 
 class Model():
     
-    def __init__(self, model_type, input_shape, latent_vector_size, use_softmax, optim_name, loss_name, classifier_output=None):
+    def __init__(self, model_type, input_shape, latent_vector_size, use_softmax, optim_name, loss_name, lr, classifier_output=None):
         
         if model_type == "autoencoder":
             self.model = Autoencoder(input_shape, latent_vector_size)
@@ -139,9 +129,15 @@ class Model():
         self.optim_name = optim_name
         self.loss_name = loss_name
         
-        self.optim = self.initiate_optim()
+        self.lr = lr
+        self.optim = self.initiate_optim(self.model.parameters())
         self.loss_fn = self.initiate_loss()
-
+        
+        if torch.cuda.is_available():
+            self.device = "cuda:0"
+        else:
+            self.device = "cpu"
+        
         self.device = "cpu"
 
     def initiate_loss(self):
@@ -156,11 +152,11 @@ class Model():
 
 
     def initiate_optim(self, params):
-        if optim_name == "sgd":
+        if self.optim_name == "sgd":
             return optim.SGD(params, lr=self.lr)
-        elif optim_name == "adam":
+        elif self.optim_name == "adam":
             return optim.Adam(params, lr=self.lr)
-        elif optim_name == "rms":
+        elif self.optim_name == "rms":
             return optim.RMSprop(params, lr=self.lr)
 
     def freeze_encoder_lv(self):
@@ -187,23 +183,27 @@ class Model():
                 #send minibatch to device from cpu
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
+                #flatten x_batch
+                x_batch = x_batch.view(len(x_batch), 1, -1)
                 #performe training: Unsupervised for autoencoder and supervised for classifier
                 if self.model_type == "autoencoder":
                     loss = self.train_step(x_batch, x_batch)
                 if self.model_type == "classifier":
                     loss = self.train_step(x_batch, y_batch)
-                losses.append(losses)
+                losses.append(loss)
         return losses
 
 
     def train_step(self, input_data, label):
         self.model.train()
-        self.optimizer.zero_grad()
-        prediction = self.model(input_data)
-        loss = self.loss_fn(prediction, label)
-        print("loss ", loss)
+        self.optim.zero_grad()
+        prediction = self.model(input_data).to(self.device)
+        loss = self.loss_fn(prediction, label).to(self.device)
+        #print("loss ", loss)
         loss.backward()
-        self.optimizer.step()
+        self.optim.step()
         self.model.train(mode=False)
         return loss
 
+    def forward(self, x_batch):
+        return self.model(x_batch)
