@@ -18,8 +18,10 @@ class Autoencoder(nn.Module):
 
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[1], out_features=300),
+            nn.Linear(in_features=input_shape[1], out_features=600),
             nn.ReLU(),
+            nn.Linear(in_features=600, out_features=300),
+            nn.ReLU(),            
             nn.Linear(in_features=300, out_features=150),
             nn.ReLU(),
             nn.Linear(in_features=150, out_features=20),
@@ -36,9 +38,11 @@ class Autoencoder(nn.Module):
 
             nn.Linear(in_features=latent_vector_size, out_features=50),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=150),
+            nn.Linear(in_features=50, out_features=200),
             nn.ReLU(),
-            nn.Linear(in_features=150, out_features=input_shape[1]),
+            nn.Linear(in_features=200, out_features=600),
+            nn.ReLU(),
+            nn.Linear(in_features=600, out_features=input_shape[1]),
 
         )
 
