@@ -8,12 +8,29 @@ import math
 import matplotlib.pyplot as plt
 import model
 import numpy as np
+import pickle
 
 # Tools 
+def pickle_file(path, filename, obj):
+    path = Path(path)
+    filepath = path / filename
+    f = open(filepath, 'wb')
+    pickle.dump(obj, f, -1)
+    f.close()
 
+def unpickle_file(path, filename):
+    path = Path(path)
+    filepath = path / filename
+    if filepath.is_file():
+        f = open(filepath, 'rb')
+        obj = pickle.load(f)
+        f.close()
+        return obj
+    return None
+    
 def showTensor(aTensor):
     plt.figure()
-    plt.imshow(aTensor.detach().numpy())
+    plt.imshow(aTensor.cpu().detach().numpy())
     plt.colorbar()
     plt.show()
     
@@ -141,13 +158,15 @@ if __name__ == "__main__":
 
 
     for x_batch, y_batch in D1:
-                #Flatten and forward pass
-                x_batch = x_batch.view(len(x_batch), 1, -1)
-                #print("in ", x_batch.size())
-                out = autoencoder.forward(x_batch)
-                #print("out ", out.size())
-                for i in range(len(x_batch)):
-                    showTensor(x_batch[i].view(1,28,28).permute(1, 2, 0))
-                    showTensor(out[i].view(1,28,28).permute(1, 2, 0))
+        x_batch = x_batch.to("cuda:0")
+        #Flatten and forward pass
+        x_batch = x_batch.view(len(x_batch), 1, -1)
+        #print("in ", x_batch.size())
+        out = autoencoder.forward(x_batch)
+        out = out.to("cuda:0")
+        #print("out ", out.size())
+        for i in range(len(x_batch)):
+            showTensor(x_batch[i].view(1,28,28).permute(1, 2, 0))
+            showTensor(out[i].view(1,28,28).permute(1, 2, 0))
 
 

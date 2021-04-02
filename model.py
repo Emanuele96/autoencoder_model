@@ -18,11 +18,11 @@ class Autoencoder(nn.Module):
 
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[1], out_features=100),
+            nn.Linear(in_features=input_shape[1], out_features=300),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=50),
+            nn.Linear(in_features=300, out_features=150),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=20),
+            nn.Linear(in_features=150, out_features=20),
 
         )
 
@@ -36,9 +36,9 @@ class Autoencoder(nn.Module):
 
             nn.Linear(in_features=latent_vector_size, out_features=50),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=100),
+            nn.Linear(in_features=50, out_features=150),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=input_shape[1]),
+            nn.Linear(in_features=150, out_features=input_shape[1]),
 
         )
 
@@ -135,10 +135,11 @@ class Model():
         
         if torch.cuda.is_available():
             self.device = "cuda:0"
+            self.model.cuda()
         else:
             self.device = "cpu"
         
-        self.device = "cpu"
+        #self.device = "cpu"
 
     def initiate_loss(self):
         if self.loss_name == "mse":
@@ -197,9 +198,8 @@ class Model():
     def train_step(self, input_data, label):
         self.model.train()
         self.optim.zero_grad()
-        prediction = self.model(input_data).to(self.device)
-        loss = self.loss_fn(prediction, label).to(self.device)
-        #print("loss ", loss)
+        prediction = self.model(input_data)
+        loss = self.loss_fn(prediction, label)
         loss.backward()
         self.optim.step()
         self.model.train(mode=False)
