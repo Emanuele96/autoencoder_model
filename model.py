@@ -129,6 +129,7 @@ class Model():
         elif model_type == "classifier":
             self.model = Classifier(input_shape, latent_vector_size, use_softmax, classifier_output)
 
+        self.classifier_output = classifier_output
         self.model_type = model_type
         self.optim_name = optim_name
         self.loss_name = loss_name
@@ -152,6 +153,9 @@ class Model():
     def get_losses(self):
         return self.losses
 
+    def get_model_name(self):
+        return self.model_type
+
     def initiate_loss(self):
         if self.loss_name == "mse":
             return nn.MSELoss(reduction="mean")
@@ -160,7 +164,7 @@ class Model():
         elif self.loss_name =="nl":
             return nn.NLLLoss()
         elif self.loss_name =="ce":
-            return cross_entropy()
+            return nn.CrossEntropyLoss()
 
 
     def initiate_optim(self, params):
@@ -201,9 +205,10 @@ class Model():
                 if self.model_type == "autoencoder":
                     loss = self.train_step(x_batch, x_batch)
                 if self.model_type == "classifier":
+                    y_batch = self.label_to_one_hot_vector(y_batch)
                     loss = self.train_step(x_batch, y_batch)
                 losses.append(loss)
-        self.episode_trained += 1
+            self.episode_trained += 1
         self.losses.extend(losses)
 
 
@@ -211,11 +216,25 @@ class Model():
         self.model.train()
         self.optim.zero_grad()
         prediction = self.model(input_data)
+
         loss = self.loss_fn(prediction, label)
         loss.backward()
         self.optim.step()
         self.model.train(mode=False)
         return loss
+
+    def label_to_one_hot_vector(self, label):
+        one_hot_vector = []
+        batch_size = label.size()[0]
+        one_hot_vector_length = self.classifier_output
+        for i in range(batch_size):
+            vector = [[0.0] * one_hot_vector_length]
+            vector[0][label[i]] = 1.0
+            one_hot_vector.append(vector)
+        one_hot_vector = torch.tensor(one_hot_vector).to(self.device)
+        return one_hot_vector
+
+
 
     def forward(self, x_batch):
         return self.model(x_batch)

@@ -6,7 +6,7 @@ import torchvision
 import torchvision.datasets as datasets
 import math
 import matplotlib.pyplot as plt
-import model
+import model as mod
 import numpy as np
 import pickle
 from pathlib import Path
@@ -94,7 +94,46 @@ def load_dataset(cfg):
     print("D2 val ", len(D2_val))
     print("D2 test ", len(D2_test))
 
-    return D1, D2_train, D2_val, D2_train, testset
+    #Get the image shape
+    tmp = DataLoader(dataset=testset, batch_size= 1, shuffle=False)
+    picture_shape = None
+    input_shape = None
+    label_shape = None
+
+    for x_batch, y_batch in tmp:
+        picture_shape = x_batch.size()[1:]
+        input_shape = x_batch.view(1, -1).size()
+        label_shape = y_batch.size()
+
+    print("picture shape ", picture_shape)
+    print("input shape ", input_shape)
+    print("label shape ", label_shape)
+
+    return D1, D2_train, D2_val, D2_train, picture_shape, input_shape, label_shape, outputs_label
+
+
+def initializate_model(cfg, model_name, classifier_output = None, use_softmax = False, suffix = ""):
+    model = unpickle_file("models", model_name + "_"+ suffix + "_" + str(cfg["dataset"]) + ".pkl" )
+    if model is None:
+        model = mod.Model(
+            model_type = model_name,
+            input_shape= input_shape,
+            latent_vector_size = cfg["latent_vector_size"],
+            use_softmax = use_softmax,
+            optim_name = cfg["optimizer_" + model_name],
+            loss_name = cfg["loss_" + model_name],
+            lr = cfg["lr_" + model_name],
+            classifier_output= classifier_output
+        )
+        pickle_file("models", model_name + "_" + str(cfg["dataset"]) + ".pkl", model)
+
+    else:
+        print(model_name + " loaded successfull. Already trained ", model.get_trained_episode_count(), " epochs.")
+    return model
+
+def train_model(cfg, model, dataset, suffix = ""):
+    model.fit(dataset, cfg["epochs_" + model.get_model_name()])
+    pickle_file("models", model.get_model_name() + "_" + suffix + "_" + str(cfg["dataset"]) + ".pkl", model)
 
 if __name__ == "__main__":
 
@@ -108,48 +147,17 @@ if __name__ == "__main__":
     print(cfg)
 
     #load the correct dataset
-    D1, D2_train, D2_val, D2_train, testset = load_dataset(cfg)
+    D1, D2_train, D2_val, D2_train, picture_shape, input_shape, label_shape, outputs_label = load_dataset(cfg)
 
-    #Get the image shape
-    tmp = DataLoader(dataset=testset, batch_size= 1, shuffle=False)
-    picture_shape = None
-    input_shape = None
-    label_shape = None
-    #max_label = torch.tensor([0])
-    for x_batch, y_batch in tmp:
-        #input_shape = x_batch.size()
-        picture_shape = x_batch.size()[1:]
-        input_shape = x_batch.view(1, -1).size()
-        label_shape = y_batch.size()
-        #max_label = torch.max(max_label, y_batch)
-        #print(y_batch)
-    #print("max ", max_label)
+    '''autoencoder = initializate_model(cfg, "autoencoder")
+    if args.train:
+        train_model(cfg, autoencoder, D1)
+    losses = autoencoder.get_losses()'''
 
-    print("picture shape ", picture_shape)
-    print("input shape ", input_shape)
-    print("label shape ", label_shape)
-    
-    autoencoder = unpickle_file("models", "autoencoder_" + str(cfg["dataset"]) + ".pkl" )
-    if autoencoder is None:
-        autoencoder = model.Model(
-            "autoencoder",
-            input_shape= input_shape,
-            latent_vector_size = cfg["latent_vector_size"],
-            use_softmax = False,
-            optim_name = cfg["optimizer_autoencoder"],
-            loss_name = cfg["loss_autoencoder"],
-            lr = cfg["lr_autoencoder"],
-            classifier_output=None
-        )
-        autoencoder.fit(D1, cfg["epochs_autoencoder"])
-        losses = autoencoder.get_losses()
-        pickle_file("models", "autoencoder_" + str(cfg["dataset"]) + ".pkl", autoencoder)
-
-    else:
-        print("Autoencoder loaded successfull. Already trained ", autoencoder.get_trained_episode_count())
-        if args.train:
-            autoencoder.fit(D1, cfg["epochs_autoencoder"])
-        losses = autoencoder.get_losses()
+    classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
+    if args.train:
+        train_model(cfg, classifier, D2_train)
+    losses = classifier.get_losses()
 
     #plot losses
     time = np.linspace(0, len(losses), num=len(losses))
