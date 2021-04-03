@@ -180,7 +180,7 @@ class Model():
         elif self.optim_name == "rms":
             return optim.RMSprop(params, lr=self.lr)
 
-    def import_wheights(self,from_model):
+    def import_weights(self,from_model):
         #from model is autoencoder and to model is classifier
         #Import weights and biases from a model this model.
         #Only wheights and biases for layers of the same name will be copied
@@ -231,12 +231,13 @@ class Model():
                 if self.model_type == "autoencoder":
                     loss = self.train_step(x_batch, x_batch)
                 if self.model_type == "classifier":
-                    y_batch = self.label_to_one_hot_vector(y_batch)
+                    #y_batch = self.label_to_one_hot_vector(y_batch)
                     loss = self.train_step(x_batch, y_batch)
                 epoch_loss += loss.item()
                 minibatches +=1
             self.losses.append(epoch_loss/minibatches) 
-            self.val.append(self.validate_epoch(val_dataset))
+            if self.model_type == "classifier":
+                self.val.append(self.validate_epoch(val_dataset))
             self.episode_trained += 1
 
         #self.losses.extend(losses)
@@ -246,6 +247,7 @@ class Model():
         self.model.train()
         self.optim.zero_grad()
         prediction = self.model(input_data)
+        prediction = prediction.view(len(prediction), -1)
 
         loss = self.loss_fn(prediction, label)
         loss.backward()

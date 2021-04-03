@@ -153,14 +153,15 @@ if __name__ == "__main__":
     if args.train:
         train_model(cfg, autoencoder, D1)
     losses = autoencoder.get_losses()'''
-    #autoencoder = initializate_model(cfg, "autoencoder")
+    autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
-
+    classifier.import_weights(autoencoder)
     if args.train:
+        train_model(cfg, autoencoder, D1, None)
         train_model(cfg, classifier, D2_train, D2_val)
-    losses = classifier.get_losses()
 
     #plot losses
+    losses = classifier.get_losses()
     time = np.linspace(0, len(losses), num=len(losses))
     plt.plot(time, losses)
     plt.show()
