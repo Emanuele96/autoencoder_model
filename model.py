@@ -65,12 +65,13 @@ class Classifier(nn.Module):
 
         # encoder
         self.encoder = nn.Sequential(
-        
-            nn.Linear(in_features=input_shape[1], out_features=100),
+            nn.Linear(in_features=input_shape[1], out_features=600),
             nn.ReLU(),
-            nn.Linear(in_features=100, out_features=50),
+            nn.Linear(in_features=600, out_features=300),
+            nn.ReLU(),            
+            nn.Linear(in_features=300, out_features=150),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=20),
+            nn.Linear(in_features=150, out_features=20),
 
         )
 
@@ -174,6 +175,25 @@ class Model():
             return optim.Adam(params, lr=self.lr)
         elif self.optim_name == "rms":
             return optim.RMSprop(params, lr=self.lr)
+
+    def import_wheights(self,from_model):
+        #from model is autoencoder and to model is classifier
+        #Import weights and biases from a model this model.
+        #Only wheights and biases for layers of the same name will be copied
+        from_model = from_model.model
+        to_model = self.model
+
+        from_params = from_model.named_parameters()
+        to_params = to_model.named_parameters()
+
+        dict_from_params = dict(from_params)
+
+        with torch.no_grad():
+            for param_name, param in to_params:
+                if param_name in dict_from_params:
+                    param.copy_(dict_from_params[param_name])
+
+        
 
     def freeze_encoder_lv(self):
         #Freeze model weights and biases

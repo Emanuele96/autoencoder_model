@@ -153,8 +153,25 @@ if __name__ == "__main__":
     if args.train:
         train_model(cfg, autoencoder, D1)
     losses = autoencoder.get_losses()'''
-
+    autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
+
+    print("############################################")
+    params1 = autoencoder.model.named_parameters()
+    for name1, param1 in params1:
+        print(name1, param1)
+    print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
+
+    classifier.import_encoder(autoencoder)
+    
+    params1 = classifier.model.named_parameters()
+    for name1, param1 in params1:
+        print(name1, param1)
+    print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
+
+
+
+
     if args.train:
         train_model(cfg, classifier, D2_train)
     losses = classifier.get_losses()
