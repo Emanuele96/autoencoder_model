@@ -131,8 +131,8 @@ def initializate_model(cfg, model_name, classifier_output = None, use_softmax = 
         print(model_name + " loaded successfull. Already trained ", model.get_trained_episode_count(), " epochs.")
     return model
 
-def train_model(cfg, model, dataset, suffix = ""):
-    model.fit(dataset, cfg["epochs_" + model.get_model_name()])
+def train_model(cfg, model, dataset, val_dataset, suffix = ""):
+    model.fit(dataset, val_dataset, cfg["epochs_" + model.get_model_name()])
     pickle_file("models", model.get_model_name() + "_" + suffix + "_" + str(cfg["dataset"]) + ".pkl", model)
 
 if __name__ == "__main__":
@@ -153,32 +153,22 @@ if __name__ == "__main__":
     if args.train:
         train_model(cfg, autoencoder, D1)
     losses = autoencoder.get_losses()'''
-    autoencoder = initializate_model(cfg, "autoencoder")
+    #autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
 
-    print("############################################")
-    params1 = autoencoder.model.named_parameters()
-    for name1, param1 in params1:
-        print(name1, param1)
-    print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
-
-    classifier.import_encoder(autoencoder)
-    
-    params1 = classifier.model.named_parameters()
-    for name1, param1 in params1:
-        print(name1, param1)
-    print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
-
-
-
-
     if args.train:
-        train_model(cfg, classifier, D2_train)
+        train_model(cfg, classifier, D2_train, D2_val)
     losses = classifier.get_losses()
 
     #plot losses
     time = np.linspace(0, len(losses), num=len(losses))
     plt.plot(time, losses)
+    plt.show()
+
+    #plot val
+    val = classifier.get_val_results()
+    time = np.linspace(0, len(val), num=len(val))
+    plt.plot(time, val)
     plt.show()
 
     #show inputs and recustructions

@@ -147,6 +147,7 @@ class Model():
         
         self.episode_trained = 0
         self.losses = list()
+        self.val = list()
 
     def get_trained_episode_count(self):
         return self.episode_trained
@@ -156,6 +157,9 @@ class Model():
 
     def get_model_name(self):
         return self.model_type
+    
+    def get_val_results(self):
+        return self.val
 
     def initiate_loss(self):
         if self.loss_name == "mse":
@@ -212,9 +216,11 @@ class Model():
         self.optim = self.initiate_optim(params)
         #optimizer.add_param_group({'params': net.fc2.parameters()})
 
-    def fit(self, train_loader, n_epochs):
-        losses = list()
+    def fit(self, train_loader, val_dataset, n_epochs):
+        #losses = list()
         for i in tqdm(range(n_epochs), "Training " + self.model_type):
+            epoch_loss = 0.0
+            minibatches = 0
             for x_batch, y_batch in train_loader:
                 #send minibatch to device from cpu
                 x_batch = x_batch.to(self.device)
@@ -227,9 +233,13 @@ class Model():
                 if self.model_type == "classifier":
                     y_batch = self.label_to_one_hot_vector(y_batch)
                     loss = self.train_step(x_batch, y_batch)
-                losses.append(loss)
+                epoch_loss += loss.item()
+                minibatches +=1
+            self.losses.append(epoch_loss/minibatches) 
+            self.val.append(self.validate_epoch(val_dataset))
             self.episode_trained += 1
-        self.losses.extend(losses)
+
+        #self.losses.extend(losses)
 
 
     def train_step(self, input_data, label):
@@ -254,7 +264,26 @@ class Model():
         one_hot_vector = torch.tensor(one_hot_vector).to(self.device)
         return one_hot_vector
 
-
-
     def forward(self, x_batch):
         return self.model(x_batch)
+
+    def validate_epoch(self, val_set):
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for data, labels in val_set:
+                data = data.to(self.device)
+                labels = labels.to(self.device)
+                data = data.view(len(data), 1, -1)
+                outputs = self.model(data)
+                #torch.max returns tuples of max values and indices
+                _, predicted = torch.max(outputs.data, 2)
+                predicted = predicted.view(len(predicted))
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                #print("predicted ", predicted)
+                #print("labels ", labels)
+                #print("matchs ", (predicted == labels).sum().item())
+        #print(correct/total)
+        #print(total)
+        return correct/total
