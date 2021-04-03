@@ -5,7 +5,7 @@
     "minibatch_size": 32,
     "lr_autoencoder" : 5e-5,
     "lr_classifier": 5e-6,
-    "epochs_autoencoder" : 30,
+    "epochs_autoencoder" : 28,
     "epochs_classifier" : 100, 
     "latent_vector_size" : 10,
     "optimizer_autoencoder": "adam",

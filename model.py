@@ -143,7 +143,14 @@ class Model():
         else:
             self.device = "cpu"
         
-        #self.device = "cpu"
+        self.episode_trained = 0
+        self.losses = list()
+
+    def get_trained_episode_count(self):
+        return self.episode_trained
+
+    def get_losses(self):
+        return self.losses
 
     def initiate_loss(self):
         if self.loss_name == "mse":
@@ -196,7 +203,8 @@ class Model():
                 if self.model_type == "classifier":
                     loss = self.train_step(x_batch, y_batch)
                 losses.append(loss)
-        return losses
+        self.episode_trained += 1
+        self.losses.extend(losses)
 
 
     def train_step(self, input_data, label):

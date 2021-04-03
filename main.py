@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import model
 import numpy as np
 import pickle
+from pathlib import Path
+
 
 # Tools 
 def pickle_file(path, filename, obj):
@@ -27,8 +29,9 @@ def unpickle_file(path, filename):
         f.close()
         return obj
     return None
-    
-def showTensor(aTensor):
+
+def showTensor(aTensor, shape):
+    aTensor = aTensor.view(shape).permute(1, 2, 0)
     plt.figure()
     plt.imshow(aTensor.cpu().detach().numpy())
     plt.colorbar()
@@ -98,7 +101,7 @@ if __name__ == "__main__":
     # Parse config file of choice
     parser = argparse.ArgumentParser("Autoencoder project")
     parser.add_argument('--config', default="config.json", type=str, help="Select configuration file to load")
-    #parser.add_argument('--train', default=False, type=bool, help="Choose whether to train or not")
+    parser.add_argument('--train', default=False, type=bool, help="Choose whether to train or not")
 
     args = parser.parse_args()
     cfg = read_config_from_json(args.config)
@@ -109,54 +112,51 @@ if __name__ == "__main__":
 
     #Get the image shape
     tmp = DataLoader(dataset=testset, batch_size= 1, shuffle=False)
+    picture_shape = None
     input_shape = None
     label_shape = None
     #max_label = torch.tensor([0])
     for x_batch, y_batch in tmp:
         #input_shape = x_batch.size()
+        picture_shape = x_batch.size()[1:]
         input_shape = x_batch.view(1, -1).size()
         label_shape = y_batch.size()
         #max_label = torch.max(max_label, y_batch)
         #print(y_batch)
     #print("max ", max_label)
 
+    print("picture shape ", picture_shape)
     print("input shape ", input_shape)
     print("label shape ", label_shape)
     
-    '''autoencoder = model.Autoencoder(input_shape, cfg["latent_vector_size"])
-    
-    for epoch in tqdm(range(cfg["epochs_autoencoder"]))
-        #For each batch
-        for x_batch, y_batch in D1:
-            #Flatten and forward pass
-            x_batch = x_batch.view(len(x_batch), 1, -1)
-            #print("in ", x_batch.size())
-            out = autoencoder(x_batch)
-            #print("out ", out.size())
-            #for i in range(len(x_batch)):
-            #    showTensor(x_batch[i].view(1,28,28).permute(1, 2, 0))
-            #    showTensor(out[i].view(1,28,28).permute(1, 2, 0))'''
+    autoencoder = unpickle_file("models", "autoencoder_" + str(cfg["dataset"]) + ".pkl" )
+    if autoencoder is None:
+        autoencoder = model.Model(
+            "autoencoder",
+            input_shape= input_shape,
+            latent_vector_size = cfg["latent_vector_size"],
+            use_softmax = False,
+            optim_name = cfg["optimizer_autoencoder"],
+            loss_name = cfg["loss_autoencoder"],
+            lr = cfg["lr_autoencoder"],
+            classifier_output=None
+        )
+        autoencoder.fit(D1, cfg["epochs_autoencoder"])
+        losses = autoencoder.get_losses()
+        pickle_file("models", "autoencoder_" + str(cfg["dataset"]) + ".pkl", autoencoder)
 
-    autoencoder = model.Model(
-        "autoencoder",
-        input_shape= input_shape,
-        latent_vector_size = cfg["latent_vector_size"],
-        use_softmax = False,
-        optim_name = cfg["optimizer_autoencoder"],
-        loss_name = cfg["loss_autoencoder"],
-        lr = cfg["lr_autoencoder"],
-        classifier_output=None
-     )
-
-
-    losses = autoencoder.fit(D1, cfg["epochs_autoencoder"])
+    else:
+        print("Autoencoder loaded successfull. Already trained ", autoencoder.get_trained_episode_count())
+        if args.train:
+            autoencoder.fit(D1, cfg["epochs_autoencoder"])
+        losses = autoencoder.get_losses()
 
     #plot losses
     time = np.linspace(0, len(losses), num=len(losses))
     plt.plot(time, losses)
     plt.show()
 
-
+    #show inputs and recustructions
     for x_batch, y_batch in D1:
         x_batch = x_batch.to("cuda:0")
         #Flatten and forward pass
@@ -166,7 +166,7 @@ if __name__ == "__main__":
         out = out.to("cuda:0")
         #print("out ", out.size())
         for i in range(len(x_batch)):
-            showTensor(x_batch[i].view(1,28,28).permute(1, 2, 0))
-            showTensor(out[i].view(1,28,28).permute(1, 2, 0))
+            showTensor(x_batch[i], picture_shape)
+            showTensor(out[i], picture_shape)
 
 
