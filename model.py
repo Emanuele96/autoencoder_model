@@ -170,7 +170,10 @@ class Model():
             return nn.NLLLoss()
         elif self.loss_name =="ce":
             return nn.CrossEntropyLoss()
-
+        elif self.loss_name =="bce":
+            return nn.BCELoss()
+        elif self.loss_name =="bcel":
+            return nn.BCEWithLogitsLoss()
 
     def initiate_optim(self, params):
         if self.optim_name == "sgd":
