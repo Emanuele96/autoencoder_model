@@ -15,10 +15,9 @@ class Autoencoder(nn.Module):
 
     def __init__(self, input_shape, latent_vector_size):
         super(Autoencoder, self ).__init__()
-
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[1], out_features=600),
+            nn.Linear(in_features=input_shape[0], out_features=600),
             nn.ReLU(),
             nn.Linear(in_features=600, out_features=300),
             nn.ReLU(),            
@@ -42,7 +41,7 @@ class Autoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features=200, out_features=600),
             nn.ReLU(),
-            nn.Linear(in_features=600, out_features=input_shape[1]),
+            nn.Linear(in_features=600, out_features=input_shape[0]),
 
         )
 
@@ -65,7 +64,7 @@ class Classifier(nn.Module):
 
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[1], out_features=600),
+            nn.Linear(in_features=input_shape[0], out_features=600),
             nn.ReLU(),
             nn.Linear(in_features=600, out_features=300),
             nn.ReLU(),            
@@ -148,6 +147,7 @@ class Model():
         self.episode_trained = 0
         self.losses = list()
         self.val = list()
+        self.val_losses = list()
 
     def get_trained_episode_count(self):
         return self.episode_trained
@@ -161,6 +161,9 @@ class Model():
     def get_val_results(self):
         return self.val
 
+    def get_val_losses(self):
+        return self.val_losses
+        
     def initiate_loss(self):
         if self.loss_name == "mse":
             return nn.MSELoss(reduction="mean")
@@ -229,18 +232,22 @@ class Model():
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
                 #flatten x_batch
-                x_batch = x_batch.view(len(x_batch), 1, -1)
+                x_batch = x_batch.view(len(x_batch), -1)
                 #performe training: Unsupervised for autoencoder and supervised for classifier
                 if self.model_type == "autoencoder":
                     loss = self.train_step(x_batch, x_batch)
                 if self.model_type == "classifier":
-                    #y_batch = self.label_to_one_hot_vector(y_batch)
+                    #transform label from class to one hot vector if bce
+                    if isinstance(self.loss_fn, (nn.BCELoss, nn.BCEWithLogitsLoss)):
+                        y_batch = self.label_to_one_hot_vector(y_batch)
                     loss = self.train_step(x_batch, y_batch)
                 epoch_loss += loss.item()
                 minibatches +=1
             self.losses.append(epoch_loss/minibatches) 
-            if self.model_type == "classifier":
-                self.val.append(self.validate_epoch(val_dataset))
+            if self.model_type =="classifier":
+                self.validate_epoch(val_dataset)
+            elif self.model_type =="autoencoder":
+                self.validate_loss_epoch(val_dataset)
             self.episode_trained += 1
 
         #self.losses.extend(losses)
@@ -253,6 +260,7 @@ class Model():
         prediction = prediction.view(len(prediction), -1)
 
         loss = self.loss_fn(prediction, label)
+
         loss.backward()
         self.optim.step()
         self.model.train(mode=False)
@@ -263,8 +271,8 @@ class Model():
         batch_size = label.size()[0]
         one_hot_vector_length = self.classifier_output
         for i in range(batch_size):
-            vector = [[0.0] * one_hot_vector_length]
-            vector[0][label[i]] = 1.0
+            vector = [0.0] * one_hot_vector_length
+            vector[label[i]] = 1.0
             one_hot_vector.append(vector)
         one_hot_vector = torch.tensor(one_hot_vector).to(self.device)
         return one_hot_vector
@@ -279,11 +287,11 @@ class Model():
             for data, labels in val_set:
                 data = data.to(self.device)
                 labels = labels.to(self.device)
-                data = data.view(len(data), 1, -1)
+                data = data.view(len(data), -1)
                 outputs = self.model(data)
                 #torch.max returns tuples of max values and indices
-                _, predicted = torch.max(outputs.data, 2)
-                predicted = predicted.view(len(predicted))
+                _, predicted = torch.max(outputs.data,1)
+                #predicted = predicted.view(len(predicted))
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
                 #print("predicted ", predicted)
@@ -291,4 +299,18 @@ class Model():
                 #print("matchs ", (predicted == labels).sum().item())
         #print(correct/total)
         #print(total)
-        return correct/total
+        self.val.append(correct/total)
+
+    def validate_loss_epoch(self, val_set):
+        epoch_loss = 0
+        n = 0
+        with torch.no_grad():
+            for data, labels in val_set:
+                data = data.to(self.device)
+                data = data.view(len(data), -1)
+                outputs = self.model(data)
+                loss = self.loss_fn(outputs, data)
+                epoch_loss += loss.item()
+                n += 1
+        self.val_losses.append(epoch_loss/n)
+            

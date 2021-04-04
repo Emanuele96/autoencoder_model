@@ -78,8 +78,13 @@ def load_dataset(cfg):
     D2_length = math.floor(cfg["D1_D2_split"][1] * len(trainset))
     D1, D2 = torch.utils.data.random_split(dataset=trainset, lengths= [D1_length, D2_length])
 
-    D1 = DataLoader(dataset=D1, batch_size= cfg["minibatch_size"], shuffle=True)
 
+    D1_train_length = math.ceil(cfg["D1_split"][0] * len(D1))
+    D1_val_length = math.floor(cfg["D1_split"][1] * len(D1))
+    D1_train, D1_val = torch.utils.data.random_split(dataset=D1, lengths=[D1_train_length, D1_val_length])
+
+    D1_train = DataLoader(dataset=D1_train, batch_size= cfg["minibatch_size"], shuffle=True)
+    D1_val = DataLoader(dataset=D1_val, batch_size= cfg["minibatch_size"], shuffle=True)
 
     D2_train_length = math.ceil(cfg["D2_split"][0] * len(D2))
     D2_val_length = math.floor(cfg["D2_split"][1] * len(D2))
@@ -89,7 +94,9 @@ def load_dataset(cfg):
     D2_val = DataLoader(dataset=D2_val, batch_size= cfg["minibatch_size"], shuffle=True)
     D2_test = DataLoader(dataset=testset, batch_size= cfg["minibatch_size"], shuffle=True)
 
-    print("D1 ", len(D1))
+    print("Nr. of minibatches of size ",cfg["minibatch_size"] )
+    print("D1 train ", len(D1_train))
+    print("D1 val ", len(D1_val))
     print("D2 train ", len(D2_train))
     print("D2 val ", len(D2_val))
     print("D2 test ", len(D2_test))
@@ -102,14 +109,14 @@ def load_dataset(cfg):
 
     for x_batch, y_batch in tmp:
         picture_shape = x_batch.size()[1:]
-        input_shape = x_batch.view(1, -1).size()
+        input_shape = x_batch.view(-1).size()
         label_shape = y_batch.size()
 
     print("picture shape ", picture_shape)
     print("input shape ", input_shape)
     print("label shape ", label_shape)
 
-    return D1, D2_train, D2_val, D2_train, picture_shape, input_shape, label_shape, outputs_label
+    return D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label
 
 
 def initializate_model(cfg, model_name, classifier_output = None, use_softmax = False, suffix = ""):
@@ -125,7 +132,7 @@ def initializate_model(cfg, model_name, classifier_output = None, use_softmax = 
             lr = cfg["lr_" + model_name],
             classifier_output= classifier_output
         )
-        pickle_file("models", model_name + "_" + str(cfg["dataset"]) + ".pkl", model)
+        pickle_file("models", model_name + "_" + suffix + "_"+ str(cfg["dataset"]) + ".pkl", model)
 
     else:
         print(model_name + " loaded successfull. Already trained ", model.get_trained_episode_count(), " epochs.")
@@ -147,19 +154,31 @@ if __name__ == "__main__":
     print(cfg)
 
     #load the correct dataset
-    D1, D2_train, D2_val, D2_train, picture_shape, input_shape, label_shape, outputs_label = load_dataset(cfg)
+    D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label = load_dataset(cfg)
 
-    '''autoencoder = initializate_model(cfg, "autoencoder")
-    if args.train:
-        train_model(cfg, autoencoder, D1)
-    losses = autoencoder.get_losses()'''
+
     autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
     classifier.import_weights(autoencoder)
     if args.train:
-        train_model(cfg, autoencoder, D1, None)
-        train_model(cfg, classifier, D2_train, D2_val)
+        train_model(cfg, autoencoder, D1_train, D1_val)
+        #train_model(cfg, classifier, D2_train, D2_val)
 
+  
+    #plot losses
+    losses = autoencoder.get_losses()
+    time = np.linspace(0, len(losses), num=len(losses))
+    plt.plot(time, losses)
+    plt.show()
+
+    #plot val
+    val = autoencoder.get_val_losses()
+    time = np.linspace(0, len(val), num=len(val))
+    plt.plot(time, val)
+    plt.show()
+  
+  
+  
     #plot losses
     losses = classifier.get_losses()
     time = np.linspace(0, len(losses), num=len(losses))
