@@ -192,7 +192,7 @@ if __name__ == "__main__":
     plt.show()
 
     #show inputs and recustructions
-    for x_batch, y_batch in D1:
+    for x_batch, y_batch in D1_val:
         x_batch = x_batch.to("cuda:0")
         #Flatten and forward pass
         x_batch = x_batch.view(len(x_batch), 1, -1)
