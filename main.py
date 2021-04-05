@@ -161,8 +161,8 @@ if __name__ == "__main__":
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
     classifier.import_weights(autoencoder)
     if args.train:
-        train_model(cfg, autoencoder, D1_train, D1_val)
-        #train_model(cfg, classifier, D2_train, D2_val)
+        #train_model(cfg, autoencoder, D1_train, D1_val)
+        train_model(cfg, classifier, D2_train, D2_val)
 
   
     #plot losses
