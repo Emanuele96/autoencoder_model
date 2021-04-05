@@ -245,9 +245,11 @@ class Model():
 
                 if self.model_type == "classifier":
                     #transform label from class to one hot vector if bce
-                    if isinstance(self.loss_fn, (nn.BCELoss, nn.BCEWithLogitsLoss)):
+                    if isinstance(self.loss_fn, (nn.BCELoss, nn.BCEWithLogitsLoss, nn.MSELoss)):
                         y_batch_one_hot = self.label_to_one_hot_vector(y_batch)
-                    loss = self.train_step(x_batch, y_batch_one_hot)
+                        loss = self.train_step(x_batch, y_batch_one_hot)
+                    else:
+                        loss = self.train_step(x_batch, y_batch)   
                     #compute train validation at each epoch
                     res = self.compute_accuracy_step(x_batch, y_batch)
                     correct += res[0]
@@ -259,6 +261,9 @@ class Model():
             if self.model_type =="classifier":
                 self.compute_epoch_accuracy(val_dataset, self.val_accuracy)
                 self.train_accuracy.append(correct/total)
+                #print("new epoch")
+                #print("correct matches ", correct)
+                #print("total cases ", total)
             elif self.model_type =="autoencoder":
                 self.validate_loss_epoch(val_dataset)
             self.episode_trained += 1
@@ -316,6 +321,8 @@ class Model():
         total = labels.size(0)
     
         correct = (predicted == labels).sum().item()
+        #print("predicted ", predicted)
+        #print("labels ", labels)        
         #print("matchs ", (predicted == labels).sum().item())
         return (correct, total)
 

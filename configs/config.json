@@ -12,7 +12,7 @@
     "optimizer_autoencoder": "adam",
     "optimizer_classifier": "adam",
     "loss_autoencoder": "mse",
-    "loss_classifier": "bcel",
+    "loss_classifier": "mse",
     "freeze_weights" : true, 
     "display_recostruction_nr" : 2,
     "tsne_plot_show" : false

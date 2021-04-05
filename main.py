@@ -161,12 +161,15 @@ if __name__ == "__main__":
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
     classifier_pretrained = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False, suffix="pretrained")
     
-    classifier_pretrained.import_weights(autoencoder)
-    if cfg["freeze_weights"]:
-        classifier_pretrained.freeze_encoder_lv()
+
     if args.train:
         train_model(cfg, autoencoder, D1_train, D1_val)
         train_model(cfg, classifier, D2_train, D2_val)
+        
+        classifier_pretrained.import_weights(autoencoder)
+        if cfg["freeze_weights"]:
+            classifier_pretrained.freeze_encoder_lv()
+
         train_model(cfg, classifier_pretrained, D2_train, D2_val, suffix="pretrained" )
   
     #plot autoencoder loss and val loss per epoch
