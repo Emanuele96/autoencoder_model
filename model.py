@@ -206,6 +206,7 @@ class Model():
             for param_name, param in to_params:
                 if param_name in dict_from_params:
                     param.copy_(dict_from_params[param_name])
+        print("Wheights imported")
 
         
 

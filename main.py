@@ -118,7 +118,6 @@ def load_dataset(cfg):
 
     return D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label
 
-
 def initializate_model(cfg, model_name, classifier_output = None, use_softmax = False, suffix = ""):
     model = unpickle_file("models", model_name + "_"+ suffix + "_" + str(cfg["dataset"]) + ".pkl" )
     if model is None:
