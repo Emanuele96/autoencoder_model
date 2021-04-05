@@ -159,39 +159,48 @@ if __name__ == "__main__":
 
     autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
-    classifier.import_weights(autoencoder)
+    classifier_pretrained = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False, suffix="pretrained")
+    
+    classifier_pretrained.import_weights(autoencoder)
+    if cfg["freeze_weights"]:
+        classifier_pretrained.freeze_encoder_lv()
     if args.train:
-        #train_model(cfg, autoencoder, D1_train, D1_val)
+        train_model(cfg, autoencoder, D1_train, D1_val)
         train_model(cfg, classifier, D2_train, D2_val)
-
+        train_model(cfg, classifier_pretrained, D2_train, D2_val, suffix="pretrained" )
   
-    #plot losses
+    #plot autoencoder loss and val loss per epoch
     losses = autoencoder.get_losses()
-    time = np.linspace(0, len(losses), num=len(losses))
-    plt.plot(time, losses)
-    plt.show()
-
-    #plot val
     val = autoencoder.get_val_losses()
-    time = np.linspace(0, len(val), num=len(val))
-    plt.plot(time, val)
-    plt.show()
-  
-  
-  
-    #plot losses
-    losses = classifier.get_losses()
     time = np.linspace(0, len(losses), num=len(losses))
-    plt.plot(time, losses)
+    plt.plot(time, losses, label = "Loss")
+    plt.plot(time, val, label = "Val loss")
+    plt.ylabel('epoch')
+    plt.title('Autoencoder Training')
+    plt.legend()
+    plt.show()  
+  
+    #plot classifier loss and val loss per epoch
+    semi_accuracy_val = classifier_pretrained.get_val_accuracy()
+    sup_accuracy_val = classifier.get_val_accuracy()
+    semi_accuracy_train = classifier_pretrained.get_train_accuracy()
+    sup_accuracy_train = classifier.get_train_accuracy()
+    time = np.linspace(0, len(semi_accuracy_val), num=len(semi_accuracy_val))
+
+
+    plt.plot(time, semi_accuracy_train, label = "semi-accuracy")
+    plt.plot(time, semi_accuracy_val, label = "semi-val-accuracy")
+    plt.plot(time, sup_accuracy_train, label = "sup-accuracy")
+    plt.plot(time, sup_accuracy_val, label = "sup_val-accuracy")
+    plt.title('Comparative Classifier Training')
+    plt.ylabel('epoch')
+    plt.legend()
     plt.show()
 
-    #plot val
-    val = classifier.get_val_results()
-    time = np.linspace(0, len(val), num=len(val))
-    plt.plot(time, val)
-    plt.show()
 
     #show inputs and recustructions
+    x_batch_vis = 0
+    out_vis = 0
     for x_batch, y_batch in D1_val:
         x_batch = x_batch.to("cuda:0")
         #Flatten and forward pass
@@ -199,9 +208,14 @@ if __name__ == "__main__":
         #print("in ", x_batch.size())
         out = autoencoder.forward(x_batch)
         out = out.to("cuda:0")
-        #print("out ", out.size())
-        for i in range(len(x_batch)):
-            showTensor(x_batch[i], picture_shape)
-            showTensor(out[i], picture_shape)
+        x_batch_vis = x_batch
+        out_vis = out
+    counter = 0
+    for i in range(len(x_batch)):
+        if counter == cfg["display_recostruction_nr"]:
+            break
+        showTensor(x_batch_vis[i], picture_shape)
+        showTensor(out_vis[i], picture_shape)
+        counter += 1
 
 

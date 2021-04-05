@@ -106,19 +106,19 @@ class Classifier(nn.Module):
         return x
 
     def freeze_encoder_lv(self):
-        self.encoder.weight.requires_grad = False
-        self.encoder.bias.requires_grad = False
-        
-        self.latent_vector.weight.requires_grad = False
-        self.latent_vector.bias.requires_grad = False
+        params = self.named_parameters()
+        params = dict(params)
+        for param_name in params.keys():
+            if "encoder" in param_name or "latent_vector" in param_name:
+                params[param_name].requires_grad = False
+        print("Freezed encoder and latent vector")
 
     def unfreeze_encoder_lv(self):
-        self.encoder.weight.requires_grad = True
-        self.encoder.bias.requires_grad = True
-        
-        self.latent_vector.weight.requires_grad = True
-        self.latent_vector.bias.requires_grad = True
-
+        params = self.named_parameters()
+        params = dict(params)
+        for param in params.values():
+                param.requires_grad = True
+        print("Unfreezed all parameters")
 
 class Model():
     
@@ -146,8 +146,9 @@ class Model():
         
         self.episode_trained = 0
         self.losses = list()
-        self.val = list()
         self.val_losses = list()
+        self.train_accuracy = list()
+        self.val_accuracy = list()
 
     def get_trained_episode_count(self):
         return self.episode_trained
@@ -158,12 +159,15 @@ class Model():
     def get_model_name(self):
         return self.model_type
     
-    def get_val_results(self):
-        return self.val
+    def get_val_accuracy(self):
+        return self.val_accuracy
 
     def get_val_losses(self):
         return self.val_losses
-        
+    
+    def get_train_accuracy(self):
+        return self.train_accuracy
+
     def initiate_loss(self):
         if self.loss_name == "mse":
             return nn.MSELoss(reduction="mean")
@@ -223,29 +227,38 @@ class Model():
         #optimizer.add_param_group({'params': net.fc2.parameters()})
 
     def fit(self, train_loader, val_dataset, n_epochs):
-        #losses = list()
         for i in tqdm(range(n_epochs), "Training " + self.model_type):
             epoch_loss = 0.0
             minibatches = 0
+            correct = 0
+            total = 0
             for x_batch, y_batch in train_loader:
                 #send minibatch to device from cpu
                 x_batch = x_batch.to(self.device)
                 y_batch = y_batch.to(self.device)
                 #flatten x_batch
                 x_batch = x_batch.view(len(x_batch), -1)
+
                 #performe training: Unsupervised for autoencoder and supervised for classifier
                 if self.model_type == "autoencoder":
                     loss = self.train_step(x_batch, x_batch)
+
                 if self.model_type == "classifier":
                     #transform label from class to one hot vector if bce
                     if isinstance(self.loss_fn, (nn.BCELoss, nn.BCEWithLogitsLoss)):
-                        y_batch = self.label_to_one_hot_vector(y_batch)
-                    loss = self.train_step(x_batch, y_batch)
+                        y_batch_one_hot = self.label_to_one_hot_vector(y_batch)
+                    loss = self.train_step(x_batch, y_batch_one_hot)
+                    #compute train validation at each epoch
+                    res = self.compute_accuracy_step(x_batch, y_batch)
+                    correct += res[0]
+                    total += res[1]
                 epoch_loss += loss.item()
                 minibatches +=1
+            #at the end of each epoch, save the results
             self.losses.append(epoch_loss/minibatches) 
             if self.model_type =="classifier":
-                self.validate_epoch(val_dataset)
+                self.compute_epoch_accuracy(val_dataset, self.val_accuracy)
+                self.train_accuracy.append(correct/total)
             elif self.model_type =="autoencoder":
                 self.validate_loss_epoch(val_dataset)
             self.episode_trained += 1
@@ -280,26 +293,31 @@ class Model():
     def forward(self, x_batch):
         return self.model(x_batch)
 
-    def validate_epoch(self, val_set):
+    def compute_epoch_accuracy(self, val_set, accuracy_list):
         correct = 0
         total = 0
         with torch.no_grad():
             for data, labels in val_set:
-                data = data.to(self.device)
-                labels = labels.to(self.device)
-                data = data.view(len(data), -1)
-                outputs = self.model(data)
-                #torch.max returns tuples of max values and indices
-                _, predicted = torch.max(outputs.data,1)
-                #predicted = predicted.view(len(predicted))
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-                #print("predicted ", predicted)
-                #print("labels ", labels)
-                #print("matchs ", (predicted == labels).sum().item())
+                res = self.compute_accuracy_step(data, labels)
+                correct += res[0]
+                total += res[1]
         #print(correct/total)
         #print(total)
-        self.val.append(correct/total)
+        accuracy_list.append(correct/total)
+
+    def compute_accuracy_step(self, data, labels):
+        data = data.to(self.device)
+        labels = labels.to(self.device)
+        data = data.view(len(data), -1)
+        outputs = self.model(data)
+        #torch.max returns tuples of max values and indices
+        _, predicted = torch.max(outputs.data,1)
+        #predicted = predicted.view(len(predicted))
+        total = labels.size(0)
+    
+        correct = (predicted == labels).sum().item()
+        #print("matchs ", (predicted == labels).sum().item())
+        return (correct, total)
 
     def validate_loss_epoch(self, val_set):
         epoch_loss = 0
