@@ -17,13 +17,11 @@ class Autoencoder(nn.Module):
         super(Autoencoder, self ).__init__()
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[0], out_features=600),
+            nn.Linear(in_features=input_shape[0], out_features=400),
             nn.ReLU(),
-            nn.Linear(in_features=600, out_features=300),
+            nn.Linear(in_features=400, out_features=100),
             nn.ReLU(),            
-            nn.Linear(in_features=300, out_features=150),
-            nn.ReLU(),
-            nn.Linear(in_features=150, out_features=20),
+            nn.Linear(in_features=100, out_features=20),
 
         )
 
@@ -35,13 +33,14 @@ class Autoencoder(nn.Module):
         #decoder
         self.decoder = nn.Sequential(
 
-            nn.Linear(in_features=latent_vector_size, out_features=50),
+            nn.Linear(in_features=latent_vector_size, out_features=20),
             nn.ReLU(),
-            nn.Linear(in_features=50, out_features=200),
+            nn.Linear(in_features=20, out_features=100),
             nn.ReLU(),
-            nn.Linear(in_features=200, out_features=600),
+            nn.Linear(in_features=100, out_features=400),
             nn.ReLU(),
-            nn.Linear(in_features=600, out_features=input_shape[0]),
+            nn.Linear(in_features=400, out_features=input_shape[0]),
+            nn.ReLU()
 
         )
 
@@ -64,13 +63,11 @@ class Classifier(nn.Module):
 
         # encoder
         self.encoder = nn.Sequential(
-            nn.Linear(in_features=input_shape[0], out_features=600),
+            nn.Linear(in_features=input_shape[0], out_features=400),
             nn.ReLU(),
-            nn.Linear(in_features=600, out_features=300),
+            nn.Linear(in_features=400, out_features=100),
             nn.ReLU(),            
-            nn.Linear(in_features=300, out_features=150),
-            nn.ReLU(),
-            nn.Linear(in_features=150, out_features=20),
+            nn.Linear(in_features=100, out_features=20),
 
         )
 

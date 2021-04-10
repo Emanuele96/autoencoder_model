@@ -65,8 +65,8 @@ def load_dataset(cfg):
         testset = datasets.EMNIST(root='./data', train=False, split = 'letters' , download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
         outputs_label = 27
-    elif str.lower(cfg["dataset"]) == "cifar":
-        trainset = datasets.CIFAR10(root='./data', train=True, download=True,  transform=torchvision.transforms.Compose([
+    elif str.lower(cfg["dataset"]) == "kmnist":
+        trainset = datasets.kinetics(root='./data', train=True, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
         testset = datasets.CIFAR10(root='./data', train=False, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
