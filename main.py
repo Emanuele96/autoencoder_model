@@ -225,8 +225,8 @@ if __name__ == "__main__":
     #plot tsne
     if cfg["tsne_plot_show"]:
         plot_tsne(tsne_pre_traning, "t-SNE prior any training")
-        plot_tsne(tsne_pre_traning, "t-SNE after autoencoder training")
-        plot_tsne(tsne_pre_traning, "t-SNE after classifier training")
+        plot_tsne(tsne_autoencoder_traning, "t-SNE after autoencoder training")
+        plot_tsne(tsne_classifier_traning, "t-SNE after classifier training")
 
     #show inputs and recustructions
     x_batch_vis = 0
