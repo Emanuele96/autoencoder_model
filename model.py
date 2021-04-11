@@ -113,7 +113,7 @@ class Classifier(nn.Module):
         params = self.named_parameters()
         params = dict(params)
         for param_name in params.keys():
-            if "encoder" in param_name or "latent_vector" in param_name:
+            if "encoder" in param_name: #or "latent_vector" in param_name:
                 params[param_name].requires_grad = False
         print("Freezed encoder and latent vector")
 
@@ -280,6 +280,7 @@ class Model():
     def train_step(self, input_data, label):
         self.model.train()
         self.optim.zero_grad()
+        #print("ggggggggggg", input_data.size())
         prediction = self.model(input_data)
         prediction = prediction.view(len(prediction), -1)
 

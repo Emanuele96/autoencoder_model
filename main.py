@@ -70,7 +70,7 @@ def load_dataset(cfg):
     elif str.lower(cfg["dataset"]) == "kmnist":
         trainset = datasets.KMNIST(root='./data', train=True, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
-        testset = datasets.CIFAR10(root='./data', train=False, download=True,  transform=torchvision.transforms.Compose([
+        testset = datasets.KMNIST(root='./data', train=False, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
         outputs_label = 10
 
@@ -120,7 +120,7 @@ def load_dataset(cfg):
         label_shape = y_batch.size()
 
     #print("picture shape ", picture_shape)
-    #print("input shape ", input_shape)
+    #print("input shape ", input_shape) 
     #print("label shape ", label_shape)
 
     return D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label, tsne
@@ -175,7 +175,6 @@ if __name__ == "__main__":
     autoencoder = initializate_model(cfg, "autoencoder")
     classifier = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False)
     classifier_pretrained = initializate_model(cfg, "classifier", classifier_output=outputs_label, use_softmax= False, suffix="pretrained")
-    
 
     if args.train:
         if cfg["tsne_plot_show"]:

@@ -1,13 +1,13 @@
 {
-    "dataset" : "fmnist",
+    "dataset" : "kmnist",
     "D1_D2_split" : [0.95, 0.05],
     "D1_split" : [0.8, 0.2],
     "D2_split" : [0.7, 0.3],
     "minibatch_size": 64,
     "lr_autoencoder" : 5e-5,
     "lr_classifier": 5e-5,
-    "epochs_autoencoder" : 5,
-    "epochs_classifier" : 5, 
+    "epochs_autoencoder" : 10,
+    "epochs_classifier" : 10, 
     "latent_vector_size" : 10,
     "optimizer_autoencoder": "adam",
     "optimizer_classifier": "adam",
@@ -15,6 +15,6 @@
     "loss_classifier": "bcel",
     "freeze_weights" : true, 
     "display_recostruction_nr" : 2,
-    "tsne_plot_show" : true,
-    "tse_samples": 100
+    "tsne_plot_show" : false,
+    "tse_samples": 200
 }
