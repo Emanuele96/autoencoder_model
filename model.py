@@ -22,6 +22,7 @@ class Autoencoder(nn.Module):
             nn.Linear(in_features=400, out_features=100),
             nn.ReLU(),            
             nn.Linear(in_features=100, out_features=20),
+            nn.ReLU()
 
         )
 
@@ -40,21 +41,24 @@ class Autoencoder(nn.Module):
             nn.Linear(in_features=100, out_features=400),
             nn.ReLU(),
             nn.Linear(in_features=400, out_features=input_shape[0]),
-            nn.ReLU()
+            nn.Sigmoid()
 
         )
 
 
-    def forward(self, x):
+    def forward(self, x, only_lv= False):
         #forward through the encoder first
         x = self.encoder(x)
         #reshape and pass through the latent vector
         #x = x.view(x.size(0), -1)
         x = self.latent_vector(x)
+        if only_lv:
+            return x
         #reshape and pass throught the decoder
         #x = x.view(1, 5, 5)
         x = self.decoder(x)
         return x
+    
 
 class Classifier(nn.Module):
 
@@ -68,6 +72,7 @@ class Classifier(nn.Module):
             nn.Linear(in_features=400, out_features=100),
             nn.ReLU(),            
             nn.Linear(in_features=100, out_features=20),
+            nn.ReLU()
 
         )
 
@@ -91,11 +96,13 @@ class Classifier(nn.Module):
         if use_softmax:
             self.softmax = nn.Softmax(dim = 1)
 
-    def forward(self, x):
+    def forward(self, x, only_lv = False):
         #forward through the encoder 
         x = self.encoder(x)
         #pass through the latent vector
         x = self.latent_vector(x)
+        if only_lv:
+            return x
         #pass throught the classifier
         x = self.classifier(x)
         if self.use_softmax:
@@ -203,7 +210,7 @@ class Model():
             for param_name, param in to_params:
                 if param_name in dict_from_params:
                     param.copy_(dict_from_params[param_name])
-        print("Wheights imported")
+        print("Weights imported")
 
         
 
@@ -225,6 +232,7 @@ class Model():
         #optimizer.add_param_group({'params': net.fc2.parameters()})
 
     def fit(self, train_loader, val_dataset, n_epochs):
+        self.model.cuda()
         for i in tqdm(range(n_epochs), "Training " + self.model_type):
             epoch_loss = 0.0
             minibatches = 0
@@ -337,3 +345,17 @@ class Model():
                 n += 1
         self.val_losses.append(epoch_loss/n)
             
+    def compute_latent_vectors(self, dataset):
+        self.model.cuda()
+        lv_s = list()
+        labels = list()
+        with torch.no_grad():
+            for data, label in dataset:
+                data = data.to(self.device)
+                label = label.to(self.device)
+                data = data.view(len(data), -1)
+                latent_vector = self.model(data, only_lv= True)
+                lv_s.append(latent_vector.cpu().detach().numpy())
+                labels.append(label.cpu().detach().numpy())
+        return (lv_s, labels)
+

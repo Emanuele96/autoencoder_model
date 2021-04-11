@@ -10,6 +10,7 @@ import model as mod
 import numpy as np
 import pickle
 from pathlib import Path
+from sklearn.manifold import TSNE
 
 
 # Tools 
@@ -32,6 +33,7 @@ def unpickle_file(path, filename):
 
 def showTensor(aTensor, shape):
     aTensor = aTensor.view(shape).permute(1, 2, 0)
+    plt.rcParams["figure.figsize"] = 2,2
     plt.figure()
     plt.imshow(aTensor.cpu().detach().numpy())
     plt.colorbar()
@@ -66,7 +68,7 @@ def load_dataset(cfg):
                                torchvision.transforms.ToTensor()]))
         outputs_label = 27
     elif str.lower(cfg["dataset"]) == "kmnist":
-        trainset = datasets.kinetics(root='./data', train=True, download=True,  transform=torchvision.transforms.Compose([
+        trainset = datasets.KMNIST(root='./data', train=True, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
         testset = datasets.CIFAR10(root='./data', train=False, download=True,  transform=torchvision.transforms.Compose([
                                torchvision.transforms.ToTensor()]))
@@ -74,9 +76,10 @@ def load_dataset(cfg):
 
 
 
-    D1_length = math.ceil(cfg["D1_D2_split"][0] * len(trainset))
+    D1_length = math.ceil(cfg["D1_D2_split"][0] * len(trainset)) - cfg["tse_samples"]
     D2_length = math.floor(cfg["D1_D2_split"][1] * len(trainset))
-    D1, D2 = torch.utils.data.random_split(dataset=trainset, lengths= [D1_length, D2_length])
+    tsne_length = cfg["tse_samples"] 
+    D1, D2, tsne = torch.utils.data.random_split(dataset=trainset, lengths= [D1_length, D2_length, tsne_length])
 
 
     D1_train_length = math.ceil(cfg["D1_split"][0] * len(D1))
@@ -94,12 +97,16 @@ def load_dataset(cfg):
     D2_val = DataLoader(dataset=D2_val, batch_size= cfg["minibatch_size"], shuffle=True)
     D2_test = DataLoader(dataset=testset, batch_size= cfg["minibatch_size"], shuffle=True)
 
+    tsne =  DataLoader(dataset=tsne, batch_size= 1, shuffle=True)
+
     print("Nr. of minibatches of size ",cfg["minibatch_size"] )
     print("D1 train ", len(D1_train))
     print("D1 val ", len(D1_val))
     print("D2 train ", len(D2_train))
     print("D2 val ", len(D2_val))
     print("D2 test ", len(D2_test))
+
+    print("t-SNE samples : ", len(tsne))
 
     #Get the image shape
     tmp = DataLoader(dataset=testset, batch_size= 1, shuffle=False)
@@ -112,11 +119,11 @@ def load_dataset(cfg):
         input_shape = x_batch.view(-1).size()
         label_shape = y_batch.size()
 
-    print("picture shape ", picture_shape)
-    print("input shape ", input_shape)
-    print("label shape ", label_shape)
+    #print("picture shape ", picture_shape)
+    #print("input shape ", input_shape)
+    #print("label shape ", label_shape)
 
-    return D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label
+    return D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label, tsne
 
 def initializate_model(cfg, model_name, classifier_output = None, use_softmax = False, suffix = ""):
     model = unpickle_file("models", model_name + "_"+ suffix + "_" + str(cfg["dataset"]) + ".pkl" )
@@ -141,6 +148,15 @@ def train_model(cfg, model, dataset, val_dataset, suffix = ""):
     model.fit(dataset, val_dataset, cfg["epochs_" + model.get_model_name()])
     pickle_file("models", model.get_model_name() + "_" + suffix + "_" + str(cfg["dataset"]) + ".pkl", model)
 
+def plot_tsne(data, title):
+    X = np.asarray(np.vstack(data[0]), dtype=np.float64)
+    y = np.hstack(data[1])
+    X_2d = TSNE(n_components=2).fit_transform(X)
+    plt.rcParams["figure.figsize"] = 15,10
+    plt.scatter(X_2d[:, 0], X_2d[:, 1], c=y)
+    plt.title(title)
+    plt.show()
+
 if __name__ == "__main__":
 
     # Parse config file of choice
@@ -153,7 +169,7 @@ if __name__ == "__main__":
     print(cfg)
 
     #load the correct dataset
-    D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label = load_dataset(cfg)
+    D1_train, D1_val, D2_train, D2_val, D2_test, picture_shape, input_shape, label_shape, outputs_label, tsne = load_dataset(cfg)
 
 
     autoencoder = initializate_model(cfg, "autoencoder")
@@ -162,7 +178,12 @@ if __name__ == "__main__":
     
 
     if args.train:
+        if cfg["tsne_plot_show"]:
+            tsne_pre_traning = autoencoder.compute_latent_vectors(tsne)
         train_model(cfg, autoencoder, D1_train, D1_val)
+        if cfg["tsne_plot_show"]:
+            tsne_autoencoder_traning = autoencoder.compute_latent_vectors(tsne)
+
         train_model(cfg, classifier, D2_train, D2_val)
         
         classifier_pretrained.import_weights(autoencoder)
@@ -170,6 +191,9 @@ if __name__ == "__main__":
             classifier_pretrained.freeze_encoder_lv()
 
         train_model(cfg, classifier_pretrained, D2_train, D2_val, suffix="pretrained" )
+        if cfg["tsne_plot_show"]:
+            tsne_classifier_traning = autoencoder.compute_latent_vectors(tsne)
+
   
     #plot autoencoder loss and val loss per epoch
     losses = autoencoder.get_losses()
@@ -199,6 +223,11 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
+    #plot tsne
+    if cfg["tsne_plot_show"]:
+        plot_tsne(tsne_pre_traning, "t-SNE prior any training")
+        plot_tsne(tsne_pre_traning, "t-SNE after autoencoder training")
+        plot_tsne(tsne_pre_traning, "t-SNE after classifier training")
 
     #show inputs and recustructions
     x_batch_vis = 0
